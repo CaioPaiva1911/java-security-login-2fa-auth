@@ -62,7 +62,7 @@ public class LoginGitHubService {
         DadosEmail emailPrincipal = Arrays.stream(resposta)
                 .findFirst()
                 .filter(d -> d.primary() && d.verified()).
-                orElse(null);
+                orElseThrow(() -> new RuntimeException("Nenhum e-mail principal verificado encontrado."));
 
         return emailPrincipal.email();
     }
