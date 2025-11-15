@@ -6,6 +6,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import javax.print.DocFlavor;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -29,7 +30,7 @@ public class LoginGitHubService {
         return "https://github.com/login/oauth/authorize" +
                 "?client_id=" + clientId +
                 "&redirect_uri=" + redirectUri +
-                "&scope=read:user,user:email";
+                "&scope=user:email,public_repo";
     }
 
     private String obterToken(String code) {
@@ -58,6 +59,15 @@ public class LoginGitHubService {
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .body(DadosEmail[].class);
+
+        String repositorios = restClient.get()
+                .uri("https://api.github.com/user/repos")
+                .headers(httpHeaders -> httpHeaders.addAll(headers))
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .body(String.class);
+
+        System.out.println(repositorios);
 
         DadosEmail emailPrincipal = Arrays.stream(resposta)
                 .findFirst()
