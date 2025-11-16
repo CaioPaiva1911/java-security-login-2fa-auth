@@ -10,7 +10,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,7 +35,7 @@ public class AutenticacaoController {
         String tokenAcesso = tokenService.gerarToken((Usuario) authentication.getPrincipal());
         String refreshToken = tokenService.gerarRefreshToken((Usuario) authentication.getPrincipal());
 
-        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken));
+        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, false));
     }
 
     @PostMapping("/atualizar-token")
@@ -48,6 +47,6 @@ public class AutenticacaoController {
         String tokenAcesso = tokenService.gerarToken(usuario);
         String tokenAtualizacao = tokenService.gerarRefreshToken(usuario);
 
-        return ResponseEntity.ok(new DadosToken(tokenAcesso, tokenAtualizacao));
+        return ResponseEntity.ok(new DadosToken(tokenAcesso, tokenAtualizacao, true));
     }
 }

@@ -1,6 +1,7 @@
 package br.com.forum_hub.domain.usuario;
 
 import br.com.forum_hub.domain.perfil.DadosPerfil;
+import br.com.forum_hub.domain.perfil.Perfil;
 import br.com.forum_hub.domain.perfil.PerfilNome;
 import br.com.forum_hub.domain.perfil.PerfilRepository;
 import br.com.forum_hub.infra.email.EmailService;
@@ -39,10 +40,7 @@ public class UsuarioService implements UserDetailsService {
 
     @Transactional
     public Usuario cadastrar(DadosCadastroUsuario dados) {
-        var senhaCriptografada = passwordEncoder.encode(dados.senha());
-
-        var perfil = perfilRepository.findByNome(PerfilNome.ESTUDANTE);
-        var usuario = new Usuario(dados, senhaCriptografada, perfil);
+        Usuario usuario = criarUsuario(dados, false);
 
         emailService.enviarEmailVerificacao(usuario);
         return usuarioRepository.save(usuario);
@@ -66,11 +64,11 @@ public class UsuarioService implements UserDetailsService {
 
     @Transactional
     public void alterarSenha(DadosAlteracaoSenha dados, Usuario logado) {
-        if(!passwordEncoder.matches(dados.senhaAtual(), logado.getPassword())){
+        if (!passwordEncoder.matches(dados.senhaAtual(), logado.getPassword())) {
             throw new RegraDeNegocioException("Senha digitada não confere com senha atual!");
         }
 
-        if(!dados.novaSenha().equals(dados.novaSenhaConfirmacao())){
+        if (!dados.novaSenha().equals(dados.novaSenhaConfirmacao())) {
             throw new RegraDeNegocioException("Senha e confirmação não conferem!");
         }
 
@@ -82,7 +80,7 @@ public class UsuarioService implements UserDetailsService {
     public void desativarUsuario(Long id, Usuario logado) {
         var usuario = usuarioRepository.findById(id).orElseThrow();
 
-        if(hierarquiaService.usuarioNaoTemPermissoes(logado, usuario, "ROLE_ADMIN"))
+        if (hierarquiaService.usuarioNaoTemPermissoes(logado, usuario, "ROLE_ADMIN"))
             throw new AccessDeniedException("Não é possivel realizar essa operação!");
 
         usuario.desativar();
@@ -100,5 +98,17 @@ public class UsuarioService implements UserDetailsService {
     public void reativarUsuario(Long id) {
         var usuario = usuarioRepository.findById(id).orElseThrow();
         usuario.reativar();
+    }
+
+    @Transactional
+    public Usuario cadastrarVerificado(DadosCadastroUsuario dadosUsuario) {
+        Usuario usuario = criarUsuario(dadosUsuario, true);
+        return usuarioRepository.save(usuario);
+    }
+
+    private Usuario criarUsuario(DadosCadastroUsuario dados, boolean verificado) {
+        String senhaCriptografada = passwordEncoder.encode(dados.senha());
+        Perfil perfil = perfilRepository.findByNome(PerfilNome.ESTUDANTE);
+        return new Usuario(dados, senhaCriptografada, perfil, verificado);
     }
 }

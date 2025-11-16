@@ -45,18 +45,32 @@ public class Usuario implements UserDetails {
     @Deprecated
     public Usuario(){}
 
-    public Usuario(DadosCadastroUsuario dados, String senhaCriptografada, Perfil perfil) {
+    public Usuario(DadosCadastroUsuario dados, String senhaCriptografada, Perfil perfil, Boolean verificado) {
         this.nomeCompleto = dados.nomeCompleto();
         this.email = dados.email();
         this.senha = senhaCriptografada;
         this.nomeUsuario = dados.nomeUsuario();
         this.biografia = dados.biografia();
         this.miniBiografia = dados.miniBiografia();
-        this.verificado = false;
         this.token = UUID.randomUUID().toString();
         this.expiracaoToken = LocalDateTime.now().plusMinutes(30);
-        this.ativo = false;
+
+        if(verificado){
+            aprovarUsuario();
+        } else {
+            this.verificado = false;
+            this.token = UUID.randomUUID().toString();
+            this.expiracaoToken = LocalDateTime.now().plusMinutes(30);
+            this.ativo = false;
+        }
         this.perfis.add(perfil);
+    }
+
+    private void aprovarUsuario() {
+        this.verificado = true;
+        this.ativo = true;
+        this.token = null;
+        this.expiracaoToken = null;
     }
 
     @Override
@@ -102,10 +116,7 @@ public class Usuario implements UserDetails {
         if(expiracaoToken.isBefore(LocalDateTime.now())){
             throw new RegraDeNegocioException("Link de verificação expirou!");
         }
-        this.verificado = true;
-        this.ativo = true;
-        this.token = null;
-        this.expiracaoToken = null;
+        aprovarUsuario();
     }
 
     public void desativar() {

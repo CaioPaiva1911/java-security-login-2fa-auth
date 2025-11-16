@@ -3,8 +3,9 @@ package br.com.forum_hub.controller;
 import br.com.forum_hub.domain.autenticacao.DadosToken;
 import br.com.forum_hub.domain.autenticacao.TokenService;
 import br.com.forum_hub.domain.autenticacao.github.LoginGitHubService;
+import br.com.forum_hub.domain.usuario.DadosCadastroUsuario;
 import br.com.forum_hub.domain.usuario.Usuario;
-import br.com.forum_hub.domain.usuario.UsuarioRepository;
+import br.com.forum_hub.domain.usuario.UsuarioService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,13 +24,13 @@ import java.net.URI;
 public class LoginGitHubController {
 
     private final LoginGitHubService loginGitHubService;
-    private final UsuarioRepository usuarioRepository;
     private final TokenService tokenService;
+    private final UsuarioService usuarioService;
 
-    public LoginGitHubController(LoginGitHubService loginGitHubService, UsuarioRepository usuarioRepository, TokenService tokenService) {
+    public LoginGitHubController(LoginGitHubService loginGitHubService, TokenService tokenService, UsuarioService usuarioService) {
         this.loginGitHubService = loginGitHubService;
-        this.usuarioRepository = usuarioRepository;
         this.tokenService = tokenService;
+        this.usuarioService = usuarioService;
     }
 
     @GetMapping
@@ -46,8 +47,7 @@ public class LoginGitHubController {
     public ResponseEntity<DadosToken> autenticarUsuarioOAuth(@RequestParam String code) {
         String email = loginGitHubService.obterEmail(code);
 
-        Usuario usuario = usuarioRepository.findByEmailIgnoreCaseAndVerificadoTrue(email)
-                .orElseThrow();
+        Usuario usuario = (Usuario) usuarioService.loadUserByUsername(email);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(usuario, null, usuario.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -55,7 +55,35 @@ public class LoginGitHubController {
         String tokenAcesso = tokenService.gerarToken(usuario);
         String refreshToken = tokenService.gerarRefreshToken(usuario);
 
-        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken));
+        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, false));
+    }
+
+    @GetMapping("/registro")
+    public ResponseEntity<Void> redirecionarRegistroGithub() {
+        String url = loginGitHubService.gerarUrlRegistro();
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setLocation(URI.create(url));
+
+        return new ResponseEntity<>(httpHeaders, HttpStatus.FOUND);
+    }
+
+    @GetMapping("/registro-autorizado")
+    public ResponseEntity<DadosToken> registrarOAuth(@RequestParam String code) {
+        DadosCadastroUsuario dadosUsuario = loginGitHubService.obterDadosOAuth(code);
+
+        Usuario usuario = usuarioService.cadastrarVerificado(dadosUsuario);
+
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(usuario, null, usuario.getAuthorities());
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        String tokenAcesso = tokenService.gerarToken(usuario);
+        String refreshToken = tokenService.gerarRefreshToken(usuario);
+
+        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, false));
+
     }
 
 }
