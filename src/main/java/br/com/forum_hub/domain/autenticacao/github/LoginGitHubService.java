@@ -17,10 +17,10 @@ public class LoginGitHubService {
     private final String redirectUri = "http://localhost:8080/login/github/autorizado";
     private final RestClient restClient;
 
-    @Value("${github.client-id:}")
+    @Value("${github.oauth.client.id:}")
     private String clientId;
 
-    @Value("${github.client-secret:}")
+    @Value("${github.oauth.client.secret:}")
     private String clientSecret;
 
     public LoginGitHubService(RestClient.Builder restClient) {
