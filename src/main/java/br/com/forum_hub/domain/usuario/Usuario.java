@@ -1,4 +1,5 @@
 package br.com.forum_hub.domain.usuario;
+
 import br.com.forum_hub.domain.perfil.Perfil;
 import br.com.forum_hub.infra.exception.RegraDeNegocioException;
 import jakarta.persistence.Entity;
@@ -21,7 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name="usuarios")
+@Table(name = "usuarios")
 @Getter
 public class Usuario implements UserDetails {
 
@@ -43,12 +44,13 @@ public class Usuario implements UserDetails {
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "usuarios_perfis",
-                joinColumns = @JoinColumn(name = "usuario_id"),
-                inverseJoinColumns = @JoinColumn(name = "perfil_id"))
-    private List<Perfil> perfis = new ArrayList<>();
+            joinColumns = @JoinColumn(name = "usuario_id"),
+            inverseJoinColumns = @JoinColumn(name = "perfil_id"))
+    private final List<Perfil> perfis = new ArrayList<>();
 
     @Deprecated
-    public Usuario(){}
+    public Usuario() {
+    }
 
     public Usuario(DadosCadastroUsuario dados, String senhaCriptografada, Perfil perfil, Boolean verificado) {
         this.nomeCompleto = dados.nomeCompleto();
@@ -60,7 +62,7 @@ public class Usuario implements UserDetails {
         this.token = UUID.randomUUID().toString();
         this.expiracaoToken = LocalDateTime.now().plusMinutes(30);
 
-        if(verificado){
+        if (verificado) {
             aprovarUsuario();
         } else {
             this.verificado = false;
@@ -93,32 +95,8 @@ public class Usuario implements UserDetails {
         return email;
     }
 
-    public String getNomeCompleto() {
-        return nomeCompleto;
-    }
-
-    public String getNomeUsuario() {
-        return nomeUsuario;
-    }
-
-    public String getBiografia() {
-        return biografia;
-    }
-
-    public String getMiniBiografia() {
-        return miniBiografia;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getToken() {
-        return token;
-    }
-
     public void verificar() {
-        if(expiracaoToken.isBefore(LocalDateTime.now())){
+        if (expiracaoToken.isBefore(LocalDateTime.now())) {
             throw new RegraDeNegocioException("Link de verificação expirou!");
         }
         aprovarUsuario();
@@ -129,13 +107,13 @@ public class Usuario implements UserDetails {
     }
 
     public Usuario alterarDados(DadosEdicaoUsuario dados) {
-        if(dados.nomeUsuario() != null){
+        if (dados.nomeUsuario() != null) {
             this.nomeUsuario = dados.nomeUsuario();
         }
-        if(dados.miniBiografia() != null){
+        if (dados.miniBiografia() != null) {
             this.miniBiografia = dados.miniBiografia();
         }
-        if(dados.biografia() != null){
+        if (dados.biografia() != null) {
             this.biografia = dados.biografia();
         }
         return this;
@@ -155,5 +133,9 @@ public class Usuario implements UserDetails {
 
     public void gerarSecret(String secret) {
         this.secret = secret;
+    }
+
+    public void ativarA2f() {
+        this.a2fAtiva = true;
     }
 }

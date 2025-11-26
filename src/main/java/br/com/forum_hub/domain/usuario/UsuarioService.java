@@ -116,4 +116,9 @@ public class UsuarioService implements UserDetailsService {
 
         return totpService.gerarQrCode(logado);
     }
+
+    public void ativarA2f(String codigo, Usuario logado) {
+        logado.ativarA2f();
+        usuarioRepository.save(logado);
+    }
 }
