@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name="usuarios")
+@Getter
 public class Usuario implements UserDetails {
 
     @Id
@@ -36,6 +38,9 @@ public class Usuario implements UserDetails {
     private String token;
     private LocalDateTime expiracaoToken;
     private Boolean ativo;
+    private String secret;
+    private Boolean a2fAtiva;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "usuarios_perfis",
                 joinColumns = @JoinColumn(name = "usuario_id"),
@@ -148,4 +153,7 @@ public class Usuario implements UserDetails {
         this.ativo = true;
     }
 
+    public void gerarSecret(String secret) {
+        this.secret = secret;
+    }
 }

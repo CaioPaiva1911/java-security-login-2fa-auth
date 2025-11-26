@@ -7,7 +7,9 @@ import br.com.forum_hub.domain.perfil.PerfilRepository;
 import br.com.forum_hub.infra.email.EmailService;
 import br.com.forum_hub.infra.exception.RegraDeNegocioException;
 import br.com.forum_hub.infra.seguranca.HierarquiaService;
+import br.com.forum_hub.infra.seguranca.totp.TotpService;
 import jakarta.transaction.Transactional;
+import lombok.AllArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -16,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
+@AllArgsConstructor
 public class UsuarioService implements UserDetailsService {
 
     private final UsuarioRepository usuarioRepository;
@@ -23,14 +26,7 @@ public class UsuarioService implements UserDetailsService {
     private final EmailService emailService;
     private final PerfilRepository perfilRepository;
     private final HierarquiaService hierarquiaService;
-
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, EmailService emailService, PerfilRepository perfilRepository, HierarquiaService hierarquiaService) {
-        this.usuarioRepository = usuarioRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.emailService = emailService;
-        this.perfilRepository = perfilRepository;
-        this.hierarquiaService = hierarquiaService;
-    }
+    private final TotpService totpService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -110,5 +106,14 @@ public class UsuarioService implements UserDetailsService {
         String senhaCriptografada = passwordEncoder.encode(dados.senha());
         Perfil perfil = perfilRepository.findByNome(PerfilNome.ESTUDANTE);
         return new Usuario(dados, senhaCriptografada, perfil, verificado);
+    }
+
+    @Transactional
+    public String gerarQrCode(Usuario logado) {
+        String secret = totpService.gerarSecret();
+        logado.gerarSecret(secret);
+        usuarioRepository.save(logado);
+
+        return totpService.gerarQrCode(logado);
     }
 }
