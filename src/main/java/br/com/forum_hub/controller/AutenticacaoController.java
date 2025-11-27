@@ -1,45 +1,61 @@
 package br.com.forum_hub.controller;
 
-import br.com.forum_hub.domain.autenticacao.DadosLogin;
-import br.com.forum_hub.domain.autenticacao.DadosRefreshToken;
-import br.com.forum_hub.domain.autenticacao.DadosToken;
-import br.com.forum_hub.domain.autenticacao.TokenService;
+import br.com.forum_hub.domain.autenticacao.*;
 import br.com.forum_hub.domain.usuario.Usuario;
 import br.com.forum_hub.domain.usuario.UsuarioRepository;
+import br.com.forum_hub.infra.seguranca.totp.TotpService;
 import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@AllArgsConstructor
 public class AutenticacaoController {
 
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
     private final UsuarioRepository usuarioRepository;
-
-    public AutenticacaoController(AuthenticationManager authenticationManager, TokenService tokenService, UsuarioRepository usuarioRepository) {
-        this.authenticationManager = authenticationManager;
-        this.tokenService = tokenService;
-        this.usuarioRepository = usuarioRepository;
-    }
+    private final TotpService totpService;
 
     @PostMapping("/login")
-    public ResponseEntity<DadosToken> efetuarLogin(@Valid @RequestBody DadosLogin dados){
+    public ResponseEntity<DadosToken> efetuarLogin(@Valid @RequestBody DadosLogin dados) {
         var autenticationToken = new UsernamePasswordAuthenticationToken(dados.email(), dados.senha());
         var authentication = authenticationManager.authenticate(autenticationToken);
 
-        String tokenAcesso = tokenService.gerarToken((Usuario) authentication.getPrincipal());
-        String refreshToken = tokenService.gerarRefreshToken((Usuario) authentication.getPrincipal());
+        Usuario usuario = (Usuario) authentication.getPrincipal();
+
+        if (usuario.isA2Ativa()) {
+            return ResponseEntity.ok(new DadosToken(null, null, true));
+        }
+
+        String tokenAcesso = tokenService.gerarToken(usuario);
+        String refreshToken = tokenService.gerarRefreshToken(usuario);
 
         return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, false));
     }
 
+    @PostMapping("/verificar-a2f")
+    public ResponseEntity<DadosToken> verificarSegundoFator(@Valid @RequestBody DadosA2F dadosA2F) {
+        Usuario usuario = usuarioRepository.findByEmailIgnoreCaseAndVerificadoTrue(dadosA2F.email()).orElseThrow();
+        Boolean codigoValido = totpService.verificarCodigo(dadosA2F.codigo(), usuario);
+
+        if(codigoValido) {
+            String tokenAcesso = tokenService.gerarToken(usuario);
+            String refreshToken = tokenService.gerarRefreshToken(usuario);
+            return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, false));
+        } else {
+            throw new BadCredentialsException("Código inválido!");
+        }
+    }
+
     @PostMapping("/atualizar-token")
-    public ResponseEntity<DadosToken> atualizarToken(@Valid @RequestBody DadosRefreshToken dados){
+    public ResponseEntity<DadosToken> atualizarToken(@Valid @RequestBody DadosRefreshToken dados) {
         var refreshToken = dados.refreshToken();
         Long idUsuario = Long.valueOf(tokenService.verificarToken(refreshToken));
         var usuario = usuarioRepository.findById(idUsuario).orElseThrow();
@@ -47,6 +63,6 @@ public class AutenticacaoController {
         String tokenAcesso = tokenService.gerarToken(usuario);
         String tokenAtualizacao = tokenService.gerarRefreshToken(usuario);
 
-        return ResponseEntity.ok(new DadosToken(tokenAcesso, tokenAtualizacao, true));
+        return ResponseEntity.ok(new DadosToken(tokenAcesso, tokenAtualizacao, false));
     }
 }

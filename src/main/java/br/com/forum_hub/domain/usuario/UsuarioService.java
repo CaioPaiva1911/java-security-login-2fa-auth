@@ -10,6 +10,7 @@ import br.com.forum_hub.infra.seguranca.HierarquiaService;
 import br.com.forum_hub.infra.seguranca.totp.TotpService;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -17,6 +18,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @AllArgsConstructor
 public class UsuarioService implements UserDetailsService {
@@ -118,7 +120,17 @@ public class UsuarioService implements UserDetailsService {
     }
 
     public void ativarA2f(String codigo, Usuario logado) {
-        logado.ativarA2f();
-        usuarioRepository.save(logado);
+        if (logado.isA2Ativa()) {
+            throw new RegraDeNegocioException("Sua autenticação de dois fatores já está ativada");
+        } else {
+            Boolean codigoValidado = totpService.verificarCodigo(codigo, logado);
+            if (codigoValidado) {
+                logado.ativarA2F();
+                usuarioRepository.save(logado);
+                log.atInfo().log("Autenticação de dois fatores ativada!");
+            } else {
+                throw new RegraDeNegocioException("Código inválido!");
+            }
+        }
     }
 }
